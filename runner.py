@@ -5,13 +5,13 @@ import jax.scipy as jsp
 import numpy as np
 from matplotlib import pyplot as plt
 
-from model import min_objective
+from model import min_objective, min_alt_objective
 from utils import random_weighted_dag, sample_covariance
 
 dim = 5
 sparsity = .65
 N_samples = 1000
-iters = 1000
+iters = 10
 step_size = .1
 spar_const = .1
 DAG_const = .1

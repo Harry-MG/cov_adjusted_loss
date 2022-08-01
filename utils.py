@@ -12,7 +12,7 @@ def loss_fn(A, omega, data):
     B = jnp.eye(n) - A
     C = jnp.linalg.inv(B)
     D_inv = C.T @ omega @ C
-    loss = jnp.linalg.norm(D_inv @ B @ data) ** 2 / (2 * n_samples)
+    loss = jnp.linalg.norm(jsp.linalg.sqrtm(D_inv) @ B @ data) ** 2 / (2 * n_samples)
     return loss
 
 
@@ -21,10 +21,11 @@ def alt_loss_fn(A, omega, data):
     n_samples = jnp.shape(data)[1]
     B = jnp.eye(n) - A
     C = jnp.linalg.inv(B)
-    evals, evecs = jnp.linalg.eig(C)
-    evals = jnp.diag(evals)  # experimentally, all the evalues are 1
     D_inv = C.T @ omega @ C
-    loss = jnp.linalg.norm(jsp.linalg.sqrtm(D_inv) @ B @ data) ** 2 / (2 * n_samples)
+    evals, evecs = jnp.linalg.eigh(D_inv)
+    evals = jnp.diag(evals)
+    sq = evecs @ jnp.sqrt(jnp.diag(evals)) @ evecs.T  # D_inv is positive-definite
+    loss = jnp.linalg.norm(sq @ B @ data) ** 2 / (2 * n_samples)
     return loss
 
 
@@ -39,6 +40,10 @@ def DAG_pen(A):
 
 def objective(A, omega, data, spar_const, DAG_const):
     return loss_fn(A, omega, data) + spar_const * sparsity_pen(A) + DAG_const * DAG_pen(A)
+
+
+def alt_objective(A, omega, data, spar_const, DAG_const):
+    return alt_loss_fn(A, omega, data) + spar_const * sparsity_pen(A) + DAG_const * DAG_pen(A)
 
 
 def random_dag(dim, sparsity):
