@@ -26,7 +26,7 @@ omega = np.linalg.inv(sample_cov)
 
 A_init = omega
 
-dag_est, logger = min_objective(data, omega, omega, step_size, iters, spar_const, DAG_const)
+dag_est, logger = min_alt_objective(data, omega, omega, step_size, iters, spar_const, DAG_const)
 
 plt.plot(logger.loss)
 plt.show()

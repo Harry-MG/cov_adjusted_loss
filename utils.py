@@ -7,6 +7,18 @@ from matplotlib import pyplot as plt
 
 
 def loss_fn(A, omega, data):
+    """
+    Loss function ||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}
+
+    Args:
+        A (np.ndarray): matrix A as above.
+        omega (np.ndarray): matrix omega as above. An estimate of the inverse covariance from the data.
+        data (np.ndarray): data matrix as above.
+
+     Returns:
+        loss (float): value of loss function.
+
+    """
     n = jnp.shape(A)[0]
     n_samples = jnp.shape(data)[1]
     B = jnp.eye(n) - A
@@ -17,14 +29,25 @@ def loss_fn(A, omega, data):
 
 
 def alt_loss_fn(A, omega, data):
+    """
+    Loss function ||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}
+
+    Args:
+        A (np.ndarray): matrix A as above.
+        omega (np.ndarray): matrix omega as above. An estimate of the inverse covariance from the data.
+        data (np.ndarray): data matrix as above.
+
+     Returns:
+        loss (float): value of loss function.
+
+    """
     n = jnp.shape(A)[0]
     n_samples = jnp.shape(data)[1]
     B = jnp.eye(n) - A
     C = jnp.linalg.inv(B)
     D_inv = C.T @ omega @ C
     evals, evecs = jnp.linalg.eigh(D_inv)
-    evals = jnp.diag(evals)
-    sq = evecs @ jnp.sqrt(jnp.diag(evals)) @ evecs.T  # D_inv is positive-definite
+    sq = evecs @ jnp.diag(jnp.sqrt(evals)) @ evecs.T  # D_inv is positive-definite
     loss = jnp.linalg.norm(sq @ B @ data) ** 2 / (2 * n_samples)
     return loss
 
