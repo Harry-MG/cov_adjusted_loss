@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 def loss_fn(A, omega, data):
     """
-    Loss function ||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}.
+    Loss function (1 / 2 * n_samples)||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}.
 
     Args:
         A (np.ndarray): matrix A as above.
@@ -30,7 +30,7 @@ def loss_fn(A, omega, data):
 
 def alt_loss_fn(A, omega, data):
     """
-    Loss function ||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}.
+    Loss function (1 / 2*n_samples)||D^{-1/2} (data - A @ data)||_F^2, where D^{-1} = (I-A)^{-T} @ omega @ (I-A)^{-1}.
 
     Args:
         A (np.ndarray): matrix A as above.
@@ -54,7 +54,7 @@ def alt_loss_fn(A, omega, data):
 
 def B_loss_fn(B, omega, data):
     """
-    Loss function ||D^{-1/2} @ B @ data||_F^2, where D^{-1} = B^{-T} @ omega @ B^{-1}.
+    Loss function (1 / 2 * n_samples)||D^{-1/2} @ B @ data||_F^2, where D^{-1} = B^{-T} @ omega @ B^{-1}.
 
     Args:
         B (np.ndarray): matrix B as above. B = I - A where A is the DAG in the usual objective.
@@ -70,6 +70,27 @@ def B_loss_fn(B, omega, data):
     D_inv = C.T @ omega @ C
     evals, evecs = jnp.linalg.eigh(D_inv)
     sq = evecs @ jnp.diag(jnp.sqrt(evals)) @ evecs.T  # D_inv is positive-definite
+    loss = (jnp.linalg.norm(sq @ B @ data) ** 2) / (2 * n_samples)
+    return loss
+
+
+def diag_loss_fn(B, omega, data):
+    """
+    Loss function (1 / 2 * n_samples)||D^{-1/2} @ B @ data||_F^2, where D^{-1} = diag(B^{-T} @ omega @ B^{-1}).
+
+    Args:
+        B (np.ndarray): matrix B as above. B = I - A where A is the DAG in the usual objective.
+        omega (np.ndarray): matrix omega as above. An estimate of the inverse covariance from the data.
+        data (np.ndarray): data matrix as above.
+
+    Returns:
+        loss (float): value of loss function.
+
+    """
+    n_samples = jnp.shape(data)[1]
+    C = jnp.linalg.inv(B)
+    D_inv = C.T @ omega @ C
+    sq = jnp.diag(jnp.sqrt(jnp.maximum(jnp.diag(D_inv), jnp.zeros(jnp.shape(B)[0]))))
     loss = (jnp.linalg.norm(sq @ B @ data) ** 2) / (2 * n_samples)
     return loss
 
@@ -157,6 +178,47 @@ def B_objective(B, omega, data, spar_const, DAG_const):
     n = np.shape(B)[0]
     idty = jnp.eye(n)
     return B_loss_fn(B, omega, data) + spar_const * sparsity_pen(idty - B) + DAG_const * DAG_pen(idty - B)
+
+
+def diag_objective(B, omega, data, spar_const, DAG_const):
+    """
+    Objective function to minimise. Loss function plus sparsity and DAG-ness penalisation terms.
+
+    Args:
+        B (np.ndarray): matrix B as main objective argument.
+        omega (np.ndarray): matrix omega. An estimate of the inverse covariance from the data.
+        data (np.ndarray): data matrix.
+        spar_const (float): positive coefficient on sparsity penalisation term.
+        DAG_const (float): positive coefficient on DAG-ness penalisation term.
+
+    Returns:
+         (float): value of objective function.
+
+    """
+    n = np.shape(B)[0]
+    idty = jnp.eye(n)
+    return diag_loss_fn(B, omega, data) + spar_const * sparsity_pen(idty - B) + DAG_const * DAG_pen(idty - B)
+
+
+def noloss_objective(B, omega, spar_const, DAG_const):
+    """
+    Objective function to minimise. Loss function plus sparsity and DAG-ness penalisation terms.
+
+    Args:
+        B (np.ndarray): matrix B as main objective argument.
+        omega (np.ndarray): matrix omega. An estimate of the inverse covariance from the data.
+        data (np.ndarray): data matrix.
+        spar_const (float): positive coefficient on sparsity penalisation term.
+        DAG_const (float): positive coefficient on DAG-ness penalisation term.
+
+    Returns:
+         (float): value of objective function.
+
+    """
+    C = jnp.linalg.inv(B)
+    D_inv = C.T @ omega @ C
+    offdiag = jnp.linalg.norm(D_inv - jnp.diag(D_inv)) ** 2
+    return offdiag + spar_const * DAG_pen(B) + DAG_const * DAG_pen(B)
 
 
 def random_dag(dim, sparsity):

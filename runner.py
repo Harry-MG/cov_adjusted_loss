@@ -5,16 +5,16 @@ import jax.scipy as jsp
 import numpy as np
 from matplotlib import pyplot as plt
 
-from model import min_objective, min_alt_objective, min_B_objective
-from utils import random_weighted_dag, sample_covariance
+from model import min_objective, min_alt_objective, min_B_objective, min_diag_objective, min_objective_fn
+from utils import random_weighted_dag, sample_covariance, noloss_objective
 
 dim = 4
 sparsity = .4
-N_samples = 20
-iters = 1000
-step_size = .1
-spar_const = .1
-DAG_const = .001
+N_samples = 1000
+iters = 10
+step_size = 20
+spar_const = 1
+DAG_const = 1
 
 noise_cov = np.diag([.5, 2, 1, 5])
 
@@ -32,7 +32,7 @@ A_init = omega
 
 B_init = jnp.eye(dim) - omega
 
-dag_est, logger = min_B_objective(data, B_init, omega, step_size, iters, spar_const, DAG_const)
+dag_est, logger = min_objective_fn(noloss_objective, data, B_init, omega, step_size, iters, spar_const, DAG_const)
 
 plt.plot(logger.loss)
 plt.show()
